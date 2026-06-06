@@ -84,6 +84,32 @@ WRAPPER_PATH="$BIN_DIR/$CUSTOM_CMD"
 echo -e "📝 正在生成启动快捷方式 ${BLUE}$WRAPPER_PATH${NC} ..."
 ln -sf "$INSTALL_DIR/douyin-dl" "$WRAPPER_PATH"
 
+# 4. 自动配置环境变量 $PATH
+NEED_SOURCE=false
+if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]] && [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+    echo -e "\n⚙️  正在检测并配置环境变量..."
+    
+    # 写入 ~/.bashrc
+    if [ -f "$HOME/.bashrc" ]; then
+        if ! grep -q "export PATH=\"\$HOME/.local/bin:\$PATH\"" "$HOME/.bashrc"; then
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+            echo -e "   ✓ 已向 ~/.bashrc 追加环境变量配置"
+            NEED_SOURCE=true
+        fi
+    fi
+    
+    # 写入 ~/.zshrc
+    if [ -f "$HOME/.zshrc" ]; then
+        if ! grep -q "export PATH=\"\$HOME/.local/bin:\$PATH\"" "$HOME/.zshrc"; then
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc"
+            echo -e "   ✓ 已向 ~/.zshrc 追加环境变量配置"
+            NEED_SOURCE=true
+        fi
+    fi
+else
+    echo -e "\n✅ 检测到 ~/.local/bin 已在您的环境变量中，无需额外配置。"
+fi
+
 echo -e "${GREEN}================================──────────────────${NC}"
 echo -e "${GREEN}🎉 安装与配置成功！${NC}"
 echo -e "${GREEN}================================──────────────────${NC}"
@@ -91,8 +117,10 @@ echo -e "📁 程序保存路径: ${BLUE}$INSTALL_DIR/douyin-dl${NC}"
 echo -e "🚀 终端全局命令: ${BLUE}$CUSTOM_CMD${NC} (已链接到 $WRAPPER_PATH)"
 echo -e ""
 echo -e "${YELLOW}🔔 使用提示:${NC}"
-echo -e "1. 请确保 ${BLUE}$BIN_DIR${NC} 已包含在您的环境变量 ${BLUE}\$PATH${NC} 中。"
-echo -e "   若没有，请将下面这行代码加入到您的 ${BLUE}~/.bashrc${NC} 或 ${BLUE}~/.zshrc${NC} 文件末尾："
-echo -e "   ${YELLOW}export PATH=\"\$HOME/.local/bin:\$PATH\"${NC}"
-echo -e "2. 终端任意目录下直接运行 ${GREEN}$CUSTOM_CMD${NC} 即可享受纯净下载！"
+if [ "$NEED_SOURCE" = true ]; then
+    echo -e "1. 💡 ${YELLOW}请先运行 'source ~/.bashrc' (或 'source ~/.zshrc')，或重启终端使配置生效！${NC}"
+    echo -e "2. 之后在终端任意目录下直接输入 ${GREEN}$CUSTOM_CMD${NC} 即可享受纯净下载！"
+else
+    echo -e "1. 终端任意目录下直接输入 ${GREEN}$CUSTOM_CMD${NC} 即可享受纯净下载！"
+fi
 echo -e "================================──────────────────"
