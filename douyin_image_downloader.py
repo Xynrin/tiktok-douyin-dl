@@ -34,7 +34,7 @@ except ImportError:
     PILImage = None
 
 # 版本控制与 GitHub 自动更新配置
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 GITHUB_USER = "Xynrin"
 GITHUB_REPO = "douyin-dl"
 
@@ -42,8 +42,15 @@ def check_for_updates(silent=False):
     """检查 GitHub 上的最新版本并提示自动更新"""
     if "YOUR_GITHUB_" in GITHUB_USER or "YOUR_GITHUB_" in GITHUB_REPO:
         return  # 若未配置 GitHub 仓库，则跳过检查
-    
+
+    latest_version = None
+    changelog = ""
+    download_url = ""
+    tag_name = ""
+
+    # 1. 首先尝试通过 GitHub API 获取最新版本（可以获取完整的 Changelog 和 Asset 链接）
     api_url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/releases/latest"
+    api_success = False
     try:
         req = urllib.request.Request(
             api_url,
@@ -52,37 +59,56 @@ def check_for_updates(silent=False):
         with urllib.request.urlopen(req, timeout=5) as resp:
             import json
             data = json.loads(resp.read().decode('utf-8'))
-            latest_version = data.get("tag_name", "").strip().lstrip('v')
-            
-            # 简单的版本对比（如果不同则提示更新）
-            if latest_version and latest_version != VERSION:
-                print(f"\n✨ 发现新版本: v{latest_version} (当前版本: v{VERSION})")
-                
-                # 获取并展示更新日志 (Changelog)
-                changelog = data.get("body", "").strip()
-                if changelog:
-                    print("\n📝 更新日志 / Changelog:")
-                    print("─" * 50)
-                    print(changelog)
-                    print("─" * 50)
+            tag_name = data.get("tag_name", "").strip()
+            latest_version = tag_name.lstrip('v')
+            changelog = data.get("body", "").strip()
+            assets = data.get("assets", [])
+            for asset in assets:
+                if asset.get("name") == "douyin-dl":
+                    download_url = asset.get("browser_download_url")
+                    break
+            api_success = True
+    except Exception:
+        # API 失败时，我们不需要在控制台打印异常，而是静默走降级逻辑
+        api_success = False
 
-                assets = data.get("assets", [])
-                download_url = ""
-                for asset in assets:
-                    if asset.get("name") == "douyin-dl":
-                        download_url = asset.get("browser_download_url")
-                        break
-                
-                if download_url:
-                    if not silent:
-                        confirm = input("\n👉 是否立即自动下载并升级为最新版本？(y/n): ").strip().lower()
-                        if confirm in ['y', 'yes']:
-                            perform_self_update(download_url)
-                    else:
-                        print("💡 提示：运行 `douyin-dl` 交互模式可一键完成自动升级。")
-    except Exception as e:
-        if not silent:
-            print(f"⚠️  检查更新失败 (网络超时或仓库未公开): {e}")
+    # 2. 如果 API 请求失败（如遭遇 403 Rate Limit），降级到网页重定向检查方法
+    if not api_success:
+        try:
+            web_url = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}/releases/latest"
+            req = urllib.request.Request(
+                web_url,
+                headers={"User-Agent": "Mozilla/5.0 douyin-dl-updater"}
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                final_url = resp.geturl()
+                if "/releases/tag/" in final_url:
+                    tag_name = final_url.split("/releases/tag/")[-1].split("?")[0].split("#")[0].strip("/")
+                    latest_version = tag_name.lstrip('v')
+                    download_url = f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}/releases/download/{tag_name}/douyin-dl"
+                    changelog = "⚠️  GitHub API 速率受限，未能加载更新日志。请访问项目主页查看详情。"
+        except Exception as e:
+            if not silent:
+                print(f"⚠️  检查更新失败 (网络超时或未公开): {e}")
+            return
+
+    # 3. 统一进行版本对比与更新提示
+    if latest_version and latest_version != VERSION:
+        print(f"\n✨ 发现新版本: v{latest_version} (当前版本: v{VERSION})")
+        
+        if changelog:
+            print("\n📝 更新日志 / Changelog:")
+            print("─" * 50)
+            print(changelog)
+            print("─" * 50)
+        
+        if download_url:
+            if not silent:
+                confirm = input("\n👉 是否立即自动下载并升级为最新版本？(y/n): ").strip().lower()
+                if confirm in ['y', 'yes']:
+                    perform_self_update(download_url)
+            else:
+                print("💡 提示：运行 `douyin-dl` 交互模式可一键完成自动升级。")
 
 def perform_self_update(download_url):
     """下载最新版本的可执行文件并原地替换自身"""
