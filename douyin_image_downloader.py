@@ -18,7 +18,14 @@ import os
 import re
 import time
 import urllib.request
+import ssl
 from datetime import datetime
+
+# 禁用全局 SSL 证书验证，防止本地 CA 证书缺失导致网络请求失败
+try:
+    ssl._create_default_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
 
 # 尝试导入 Pillow 以读取图片尺寸
 try:
@@ -27,7 +34,7 @@ except ImportError:
     PILImage = None
 
 # 版本控制与 GitHub 自动更新配置
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 GITHUB_USER = "Xynrin"
 GITHUB_REPO = "douyin-dl"
 
