@@ -1,0 +1,67 @@
+name: Build and Release Standalone Binary
+
+on:
+  push:
+    tags:
+      - 'v*' # 当推送形如 v1.0.0 的 tag 时触发构建
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release for Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12' # 使用稳定版本的 Python 确保二进制的广泛兼容性
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install playwright Pillow pyinstaller
+
+      - name: Download Playwright Chromium locally
+        run: |
+          # 强制将浏览器下载在本地依赖包内部，便于打包
+          PLAYWRIGHT_BROWSERS_PATH=0 python -m playwright install chromium
+
+      - name: Compile Standalone Executable using PyInstaller
+        run: |
+          # 动态获取当前运行环境的 site-packages 路径
+          SITE_PACKAGES=$(python -c "import site; print(site.getsitepackages()[0])")
+          echo "Playwright site-packages path: $SITE_PACKAGES"
+          
+          # 编译成单文件包，并强行嵌入 playwright 驱动与已下载的浏览器内核
+          pyinstaller --onefile --clean --name=douyin-dl \
+            --add-data "$SITE_PACKAGES/playwright/driver:playwright/driver" \
+            douyin_image_downloader.py
+
+      - name: Verify Executable Size
+        run: |
+          ls -lh dist/douyin-dl
+
+      - name: Create GitHub Release and Upload Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/douyin-dl
+          body: |
+            ## 🚀 抖音图文 / 视频无水印下载器 Linux 预编译版
+            
+            ### 🛠️ 安装方法：
+            在终端中运行以下命令即可极速一键下载安装：
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/install.sh | bash
+            ```
+            
+            *提示：首次使用可能需要在终端手动同意《免责声明》内容。*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

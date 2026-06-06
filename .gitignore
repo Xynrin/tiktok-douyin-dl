@@ -1,0 +1,25 @@
+# Python venv
+.venv/
+venv/
+env/
+
+# Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# PyInstaller build files
+build/
+dist/
+*.spec
+
+# PyCharm / IDE settings
+.idea/
+.vscode/
+
+# Download outputs
+douyin_downloads/
+debug_page.html
+debug_page.py
+EOF
