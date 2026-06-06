@@ -7,17 +7,27 @@ VERSION=$(./.venv/bin/python -c "import douyin_image_downloader; print(douyin_im
 echo "📦 开始本地打包并发布版本: v$VERSION ..."
 
 # 2. 运行 PyInstaller 编译两套独立软件
+# 创建临时目录，复制 Playwright 驱动并排除浏览器文件以减小体积（从 370MB 减小到 ~50MB）
+echo "📦 正在准备 Playwright 驱动 (排除浏览器以减小体积)..."
+rm -rf playwright_driver_dist
+cp -r .venv/lib/python3.14/site-packages/playwright/driver playwright_driver_dist
+rm -rf playwright_driver_dist/package/.local-browsers
+
 echo "🔨 正在编译 抖音下载器 (douyin-dl) ..."
 rm -rf build
 ./.venv/bin/python -m PyInstaller --onefile --clean --name=douyin-dl \
-  --add-data ".venv/lib/python3.14/site-packages/playwright/driver:playwright/driver" \
+  --add-data "playwright_driver_dist:playwright/driver" \
   douyin_image_downloader.py
 
 echo "🔨 正在编译 TikTok 下载器 (tiktok-dl) ..."
 rm -rf build
 ./.venv/bin/python -m PyInstaller --onefile --clean --name=tiktok-dl \
-  --add-data ".venv/lib/python3.14/site-packages/playwright/driver:playwright/driver" \
+  --add-data "playwright_driver_dist:playwright/driver" \
   tiktok_downloader.py
+
+# 清理临时目录
+rm -rf playwright_driver_dist
+
 
 # 3. 提交 .gitignore 等其他非源码文件的修改，并推送 Tag
 git add .
