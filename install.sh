@@ -40,16 +40,27 @@ else
         exit 1
     fi
 
-    # 从 GitHub 获取最新 Release 的下载链接
+    # 从 GitHub 获取最新 Release 的下载链接 (优先通过 302 重定向解析最新 tag，规避 GitHub API 频次限制)
     echo -e "🌐 正在获取 GitHub 最新发布版本信息..."
-    API_URL="https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/releases/latest"
     
-    # 尝试使用 curl 获取最新版本并提取二进制下载链接
-    DOWNLOAD_URL=$(curl -s "$API_URL" | grep -o '"browser_download_url": *"[^"]*"' | grep -o 'http[^"]*' | grep -E '/douyin-dl$' | head -n 1 || true)
+    # 通过 302 重定向 Location 头部获取最新发布版本 tag
+    REDIRECT_URL=$(curl -sI "https://github.com/$GITHUB_USER/$GITHUB_REPO/releases/latest" | grep -i '^location:' | cut -d' ' -f2 | tr -d '\r\n' || true)
     
-    if [ -z "$DOWNLOAD_URL" ]; then
-        echo -e "${RED}❌ 错误: 未能在 GitHub Releases 资产中找到名为 'douyin-dl' 的发布包。${NC}"
-        echo -e "请先在您的 GitHub 仓库发布一个 Release 并上传编译好的二进制文件。${NC}"
+    if [ -n "$REDIRECT_URL" ] && [[ "$REDIRECT_URL" == *"/releases/tag/"* ]]; then
+        TAG=$(basename "$REDIRECT_URL")
+        DOWNLOAD_URL="https://github.com/$GITHUB_USER/$GITHUB_REPO/releases/download/$TAG/douyin-dl"
+    else
+        # 兜底方案：通过 REST API 解析 (若未发布任何 Release，重定向可能失败)
+        echo -e "⚠️  未检测到重定向，尝试备用 API 接口解析..."
+        API_URL="https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/releases/latest"
+        DOWNLOAD_URL=$(curl -s "$API_URL" | grep -o '"browser_download_url": *"[^"]*"' | grep -o 'http[^"]*' | grep -E '/douyin-dl$' | head -n 1 || true)
+    fi
+    
+    if [ -z "$DOWNLOAD_URL" ] || [[ "$DOWNLOAD_URL" == *"rate limit exceeded"* ]]; then
+        echo -e "${RED}❌ 错误: 未能在 GitHub 获取到名为 'douyin-dl' 的发布包地址。${NC}"
+        echo -e "可能原因："
+        echo -e "1. 您的 GitHub Actions 自动编译尚未结束（请稍候 2 分钟在 GitHub Actions 页面查看进度）"
+        echo -e "2. 本机 IP 在 GitHub 上的 API 访问频次超限"
         exit 1
     fi
 
