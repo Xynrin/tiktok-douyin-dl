@@ -45,6 +45,34 @@ GITHUB_REPO = "tiktok-douyin-dl"
 # 强制设置浏览器路径为用户的全局缓存目录，防止打包后寻找 tmp 目录而崩溃
 os.environ['PLAYWRIGHT_BROWSERS_PATH'] = os.path.expanduser('~/.cache/ms-playwright')
 
+# ============================================================================
+# 国内镜像加速：Playwright 浏览器下载（绕过 GFW）
+# 通过设置 PLAYWRIGHT_DOWNLOAD_HOST 让 playwright install 从国内镜像下载浏览器
+# ============================================================================
+if 'PLAYWRIGHT_DOWNLOAD_HOST' not in os.environ:
+    _default_mirror_tt = 'https://playwright-zh.oss-cn-hangzhou.aliyuncs.com'
+    try:
+        import urllib.request as _ur_test_tt
+        for _m_tt in [
+            'https://playwright-zh.oss-cn-hangzhou.aliyuncs.com',
+            'https://cdn.npmmirror.com/binaries/playwright',
+            'https://ghproxy.com/https://playwright.azureedge.net',
+        ]:
+            try:
+                _r_tt = _ur_test_tt.Request(_m_tt, method='HEAD')
+                _resp_tt = _ur_test_tt.urlopen(_r_tt, timeout=4)
+                if 200 <= _resp_tt.status < 500:
+                    _default_mirror_tt = _m_tt
+                    break
+            except Exception:
+                continue
+    except Exception:
+        pass
+    os.environ['PLAYWRIGHT_DOWNLOAD_HOST'] = _default_mirror_tt
+
+if 'npm_config_registry' not in os.environ:
+    os.environ['npm_config_registry'] = 'https://registry.npmmirror.com'
+
 # 读取本地语言设置
 LANG = "zh"
 try:
@@ -281,7 +309,25 @@ def process_single(url, browser, output_base, index, total):
         context = browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
+
         page = context.new_page()
+
+        # CDP 注入：隐藏 Playwright 自动化特征，防止被 TikTok 检测
+        # 注意：新版 Playwright Python 需要用 context.new_cdp_session(page)
+        try:
+            cdp_session = context.new_cdp_session(page)
+            cdp_session.send("Page.addScriptToEvaluateOnNewDocument", {
+                "source": """
+                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                    Object.defineProperty(navigator, 'languages', { get: () => ['zh-CN', 'zh', 'en'] });
+                    window.chrome = { runtime: {} };
+                    delete window.cdc_adoQpoasnfa4pcohlfhok;
+                    delete window.$cdc_asdjflasutopfhvcZLmcfl_;
+                """
+            })
+        except Exception:
+            pass  # CDP 不可用时静默跳过
         page.goto(url, wait_until="domcontentloaded", timeout=30000)
         page.wait_for_timeout(6000) # 等待完整渲染与状态注水
         
@@ -417,30 +463,138 @@ def process_single(url, browser, output_base, index, total):
                 pass
         return False
 
-def ensure_browser_installed(playwright_inst):
-    """检查并自动安装缺失的 Playwright 浏览器"""
+def _manual_install_chromium_tt(mirror: str = "https://playwright-zh.oss-cn-hangzhou.aliyuncs.com"):
+    """备用策略：手动从镜像下载 Chromium 浏览器 zip 并解压到正确位置。"""
+    import urllib.request
+    import zipfile
+
+    expected_exec_path = None
+    browser_cache_dir = os.environ.get(
+        'PLAYWRIGHT_BROWSERS_PATH',
+        os.path.expanduser('~/.cache/ms-playwright')
+    )
     try:
-        # 尝试启动浏览器来验证其是否存在
+        from playwright.sync_api import sync_playwright as _sp3
+        with _sp3() as pw:
+            expected_exec_path = pw.chromium.executable_path
+    except Exception:
+        pass
+
+    if not expected_exec_path:
+        print("  ✗ 无法确定浏览器安装路径，请手动执行：")
+        print("     set PLAYWRIGHT_DOWNLOAD_HOST=https://playwright-zh.oss-cn-hangzhou.aliyuncs.com")
+        print("     python -m playwright install chromium")
+        return False
+
+    target_dir = os.path.dirname(os.path.dirname(expected_exec_path))
+    revision = ''
+    for part in expected_exec_path.split(os.sep):
+        if part.startswith('chromium-'):
+            revision = part.replace('chromium-', '')
+            break
+
+    zip_filename = 'chromium-win64.zip'
+    target_exe = expected_exec_path
+
+    if os.path.exists(target_exe):
+        print("  ✓ 浏览器已安装，无需下载")
+        return True
+
+    mirrors = [
+        mirror,
+        'https://playwright-zh.oss-cn-hangzhou.aliyuncs.com',
+        'https://cdn.npmmirror.com/binaries/playwright',
+        'https://ghproxy.com/https://playwright.azureedge.net',
+        'https://playwright.azureedge.net',
+    ]
+
+    print(f"  [备用策略] 期望的浏览器路径: {target_exe}")
+    print(f"  [备用策略] 预计下载: {zip_filename}")
+    print(f"  [备用策略] 请确保网络连接正常，大小约 100MB...")
+
+    for idx, m in enumerate(mirrors, 1):
+        url = f"{m.rstrip('/')}/builds/chromium/{revision}/{zip_filename}"
+        print(f"  [{idx}/{len(mirrors)}] 尝试下载: {url[:70]}...")
+
+        try:
+            def _report_progress_tt(block_num, block_size, total_size):
+                if total_size > 0:
+                    percent = int(block_num * block_size * 100 / total_size)
+                    if percent % 5 == 0:
+                        mb_done = block_num * block_size / (1024 * 1024)
+                        mb_total = total_size / (1024 * 1024)
+                        print(f"    下载中: {percent}% ({mb_done:.1f}/{mb_total:.1f} MB)", end='\r')
+
+            req = urllib.request.Request(
+                url,
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': '*/*',
+                }
+            )
+            zip_path, _ = urllib.request.urlretrieve(url=req, reporthook=_report_progress_tt)
+            print(f"\n    ✓ 下载完成")
+
+            print(f"    正在解压到: {target_dir}")
+            os.makedirs(target_dir, exist_ok=True)
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                zf.extractall(target_dir)
+
+            try:
+                os.remove(zip_path)
+            except Exception:
+                pass
+
+            if os.path.exists(target_exe):
+                print(f"    ✓ 浏览器已成功安装")
+                return True
+            else:
+                print(f"    ✗ 解压完成但未找到 chrome.exe，尝试其他方式...")
+
+        except Exception as ex:
+            print(f"    ✗ 失败: {ex}")
+            continue
+
+    print(f"\n  ✗ 所有自动下载方式均失败，请手动执行：")
+    print(f"    set PLAYWRIGHT_DOWNLOAD_HOST=https://playwright-zh.oss-cn-hangzhou.aliyuncs.com")
+    print(f"    python -m playwright install chromium")
+    print(f"    或手动下载: https://playwright-zh.oss-cn-hangzhou.aliyuncs.com/builds/chromium/{revision}/chromium-win64.zip")
+    print(f"    解压到: {target_dir}")
+    return False
+
+
+def ensure_browser_installed(playwright_inst):
+    """检查并自动安装缺失的 Playwright 浏览器（使用国内镜像源）"""
+    if 'PLAYWRIGHT_DOWNLOAD_HOST' not in os.environ:
+        os.environ['PLAYWRIGHT_DOWNLOAD_HOST'] = 'https://playwright-zh.oss-cn-hangzhou.aliyuncs.com'
+    mirror = os.environ.get('PLAYWRIGHT_DOWNLOAD_HOST', '')
+    try:
         browser = playwright_inst.chromium.launch(headless=True)
         browser.close()
     except Exception as e:
         err_msg = str(e)
-        if "Executable doesn't exist" in err_msg or "looks like Playwright was just installed" in err_msg:
+        if "Executable doesn't exist" in err_msg or "looks like Playwright was just installed" in err_msg or "executable doesn't exist" in err_msg.lower():
             print(t("browser_not_found"))
-            import sys
-            import playwright.__main__
-            
-            old_argv = sys.argv
-            sys.argv = ["playwright", "install", "chromium"]
+            print(f"  [镜像] 使用下载源: {mirror}")
+            print("  浏览器大小约 100MB，请耐心等待...")
+
+            import sys as _sys_tt
+            import playwright.__main__ as _pm_tt
+
+            old_argv = _sys_tt.argv
             try:
-                playwright.__main__.main()
+                _sys_tt.argv = ["playwright", "install", "chromium"]
+                _pm_tt.main()
+                print(t("browser_install_success"))
             except SystemExit as exit_err:
                 if exit_err.code != 0:
-                    print(t("browser_install_failed", code=exit_err.code))
-                    sys.exit(1)
+                    print("  [策略 1 失败] 正在尝试备用方式下载...")
+                    _manual_install_chromium_tt(mirror)
+            except Exception as inner_e:
+                print(f"  [策略 1 失败] 错误: {inner_e}")
+                _manual_install_chromium_tt(mirror)
             finally:
-                sys.argv = old_argv
-            print(t("browser_install_success"))
+                _sys_tt.argv = old_argv
         else:
             raise e
 

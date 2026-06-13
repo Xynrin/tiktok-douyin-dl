@@ -545,6 +545,8 @@ def process_single(url, browser, output_base, index, total):
                 size, res = download_video(vid, filepath)
                 print(t("download_success", filename=filename, size=format_size(size), resolution=res))
             except Exception as e:
+                import traceback
+                print(f"[DEBUG] 无水印 API 下载失败，准备降级。错误原因:\n{traceback.format_exc()}")
                 # 备用方案：尝试直接提取当前页面的 video src (常含水印，作为兜底)
                 video_element = page.query_selector('video')
                 if video_element:
