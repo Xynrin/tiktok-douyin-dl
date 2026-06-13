@@ -60,3 +60,38 @@ jobs:
           dist/tiktok-dl.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller playwright Pillow requests playwright-stealth
+
+    - name: Build CLI (Douyin)
+      run: |
+        stealth_path=$(python -c "import playwright_stealth, os; print(os.path.dirname(playwright_stealth.__file__))")
+        python -m PyInstaller --noconfirm --onefile --name "douyin-dl-linux" --hidden-import douyin_image_downloader --add-data "$stealth_path/js:playwright_stealth/js" --clean douyin_image_downloader.py
+
+    - name: Build CLI (TikTok)
+      run: |
+        stealth_path=$(python -c "import playwright_stealth, os; print(os.path.dirname(playwright_stealth.__file__))")
+        python -m PyInstaller --noconfirm --onefile --name "tiktok-dl-linux" --hidden-import tiktok_downloader --add-data "$stealth_path/js:playwright_stealth/js" --clean tiktok_downloader.py
+
+    - name: Append to GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          dist/douyin-dl-linux
+          dist/tiktok-dl-linux
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
