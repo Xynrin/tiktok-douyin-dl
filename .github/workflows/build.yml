@@ -31,7 +31,7 @@ jobs:
 
     - name: Compile Inno Setup Installer
       run: |
-        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 
     - name: Build CLI (Douyin)
       run: |
