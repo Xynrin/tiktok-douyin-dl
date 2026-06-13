@@ -27,6 +27,7 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 
 [Files]
 Source: "dist\MediaDownloader_GUI\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "ms-playwright\*"; DestDir: "{userprofile}\.cache\ms-playwright"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "Disclaimer.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "app.ico"; DestDir: "{app}"; Flags: ignoreversion
 
