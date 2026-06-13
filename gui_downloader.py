@@ -862,6 +862,25 @@ class App(tk.Tk):
         self._log_text.tag_configure("error", foreground="red")
         self._log_text.pack(fill="both", expand=True)
 
+        # ------------------- 注册右键菜单 -------------------
+        self._context_menu = tk.Menu(self, tearoff=0)
+        self._context_menu.add_command(label="剪切 / Cut", command=lambda: self.focus_get().event_generate("<<Cut>>"))
+        self._context_menu.add_command(label="复制 / Copy", command=lambda: self.focus_get().event_generate("<<Copy>>"))
+        self._context_menu.add_command(label="粘贴 / Paste", command=lambda: self.focus_get().event_generate("<<Paste>>"))
+        self._context_menu.add_separator()
+        self._context_menu.add_command(label="全选 / Select All", command=lambda: self.focus_get().event_generate("<<SelectAll>>"))
+
+        def _show_context_menu(event):
+            widget = event.widget
+            if widget.winfo_class() in ("Entry", "TEntry", "Text", "ScrolledText"):
+                widget.focus_set()
+                self._context_menu.tk_popup(event.x_root, event.y_root)
+
+        self.bind_class("Text", "<Button-3>", _show_context_menu)
+        self.bind_class("Entry", "<Button-3>", _show_context_menu)
+        self.bind_class("TEntry", "<Button-3>", _show_context_menu)
+        self.bind_class("ScrolledText", "<Button-3>", _show_context_menu)
+
         # 状态栏
         self._status_label = ttk.Label(self, text=_t("status_ready"), anchor="w", relief="sunken")
         self._status_label.pack(fill="x", side="bottom")

@@ -27,7 +27,7 @@ jobs:
 
     - name: Build GUI with PyInstaller (OneDir)
       run: |
-        python -m PyInstaller --noconfirm --onedir --noconsole --icon="app.ico" --name "MediaDownloader_GUI" --hidden-import douyin_image_downloader --hidden-import tiktok_downloader --hidden-import auto_updater --hidden-import sv_ttk --hidden-import playwright_stealth --collect-all playwright --collect-all PIL --collect-all sv_ttk --clean gui_downloader.py
+        python -m PyInstaller --noconfirm --onedir --noconsole --icon="app.ico" --name "MediaDownloader_GUI" --hidden-import douyin_image_downloader --hidden-import tiktok_downloader --hidden-import auto_updater --hidden-import sv_ttk --collect-all playwright_stealth --collect-all playwright --collect-all PIL --collect-all sv_ttk --clean gui_downloader.py
 
     - name: Compile Inno Setup Installer
       run: |
@@ -35,11 +35,11 @@ jobs:
 
     - name: Build CLI (Douyin)
       run: |
-        python -m PyInstaller --noconfirm --onefile --name "douyin-dl" --hidden-import douyin_image_downloader --hidden-import playwright_stealth --clean douyin_image_downloader.py
+        python -m PyInstaller --noconfirm --onefile --name "douyin-dl" --hidden-import douyin_image_downloader --collect-all playwright_stealth --clean douyin_image_downloader.py
 
     - name: Build CLI (TikTok)
       run: |
-        python -m PyInstaller --noconfirm --onefile --name "tiktok-dl" --hidden-import tiktok_downloader --hidden-import playwright_stealth --clean tiktok_downloader.py
+        python -m PyInstaller --noconfirm --onefile --name "tiktok-dl" --hidden-import tiktok_downloader --collect-all playwright_stealth --clean tiktok_downloader.py
 
     - name: Build FPK for FeiNiu OS
       run: |
