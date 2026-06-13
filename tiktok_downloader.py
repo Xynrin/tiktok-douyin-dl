@@ -592,22 +592,31 @@ def ensure_browser_installed(playwright_inst):
             print("  浏览器大小约 100MB，请耐心等待...")
 
             import sys as _sys_tt
-            import playwright.__main__ as _pm_tt
+            import subprocess
+            from playwright._impl._driver import compute_driver_executable, get_driver_env
+            
+            driver_executable, driver_cli = compute_driver_executable()
+            env = get_driver_env()
 
-            old_argv = _sys_tt.argv
             try:
-                _sys_tt.argv = ["playwright", "install", "chromium"]
-                _pm_tt.main()
+                creationflags = 0
+                import os
+                if os.name == 'nt':
+                    creationflags = subprocess.CREATE_NO_WINDOW
+                
+                subprocess.run(
+                    [driver_executable, driver_cli, "install", "chromium"],
+                    env=env,
+                    check=True,
+                    creationflags=creationflags
+                )
                 print(t("browser_install_success"))
-            except SystemExit as exit_err:
-                if exit_err.code != 0:
-                    print("  [策略 1 失败] 正在尝试备用方式下载...")
-                    _manual_install_chromium_tt(mirror)
+            except subprocess.CalledProcessError as exit_err:
+                print(f"  [策略 1 失败] 错误码: {exit_err.returncode}，正在尝试备用方式下载...")
+                _manual_install_chromium_tt(mirror)
             except Exception as inner_e:
                 print(f"  [策略 1 失败] 错误: {inner_e}")
                 _manual_install_chromium_tt(mirror)
-            finally:
-                _sys_tt.argv = old_argv
         else:
             raise e
 

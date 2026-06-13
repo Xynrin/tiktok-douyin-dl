@@ -605,19 +605,29 @@ def ensure_browser_installed(playwright_inst):
         if "Executable doesn't exist" in err_msg or "looks like Playwright was just installed" in err_msg:
             print(t("browser_not_found"))
             import sys
-            import playwright.__main__
+            import subprocess
+            from playwright._impl._driver import compute_driver_executable, get_driver_env
             
-            old_argv = sys.argv
-            sys.argv = ["playwright", "install", "chromium"]
+            driver_executable, driver_cli = compute_driver_executable()
+            env = get_driver_env()
+            
             try:
-                playwright.__main__.main()
-            except SystemExit as exit_err:
-                if exit_err.code != 0:
-                    print(t("browser_install_failed", code=exit_err.code))
-                    sys.exit(1)
-            finally:
-                sys.argv = old_argv
-            print(t("browser_install_success"))
+                # 修复 Windows 子进程弹出 CMD 黑框
+                creationflags = 0
+                import os
+                if os.name == 'nt':
+                    creationflags = subprocess.CREATE_NO_WINDOW
+                
+                subprocess.run(
+                    [driver_executable, driver_cli, "install", "chromium"],
+                    env=env,
+                    check=True,
+                    creationflags=creationflags
+                )
+                print(t("browser_install_success"))
+            except subprocess.CalledProcessError as exit_err:
+                print(t("browser_install_failed", code=exit_err.returncode))
+                sys.exit(1)
         else:
             raise e
 

@@ -8,7 +8,7 @@ import tempfile
 import subprocess
 import tkinter.messagebox as messagebox
 
-CURRENT_VERSION = "v1.4.6"
+CURRENT_VERSION = "v1.4.7"
 
 def check_for_updates(root, silent=True):
     def _run():
