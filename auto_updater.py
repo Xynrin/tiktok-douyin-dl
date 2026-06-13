@@ -8,45 +8,52 @@ import tempfile
 import subprocess
 import tkinter.messagebox as messagebox
 
-CURRENT_VERSION = "v1.4.1"
-REPO_API_URL = "https://api.github.com/repos/Xynrin/tiktok-douyin-dl/releases/latest"
+CURRENT_VERSION = "v1.4.2"
 
 def check_for_updates(root, silent=True):
     def _run():
-        try:
-            req = urllib.request.Request(REPO_API_URL, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode('utf-8'))
+        import re
+        import urllib.request
+        
+        # 使用加速镜像站的 /releases/latest 页面（非 API）来绕过 403 限制和 GFW
+        check_urls = [
+            "https://github.com/Xynrin/tiktok-douyin-dl/releases/latest",
+            "https://kgithub.com/Xynrin/tiktok-douyin-dl/releases/latest",
+        ]
+        
+        latest_version = None
+        for url in check_urls:
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}, method="HEAD")
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    final_url = resp.geturl()
+                    # 从重定向后的 URL 提取版本号，例如 .../releases/tag/v1.4.1
+                    match = re.search(r'/tag/(v\d+\.\d+\.\d+)', final_url)
+                    if match:
+                        latest_version = match.group(1)
+                        break
+            except Exception:
+                continue
                 
-            latest_version = data.get("tag_name", "")
-            if latest_version and latest_version.startswith("v") and latest_version != CURRENT_VERSION:
-                # 提示更新
-                msg = f"发现新版本 {latest_version}！\n\n更新内容:\n{data.get('body', '')}\n\n是否立即下载并更新？"
-                def _show_prompt():
-                    if messagebox.askyesno("软件更新", msg, parent=root):
-                        # 查找 setup 文件下载链接
-                        assets = data.get("assets", [])
-                        download_url = None
-                        for a in assets:
-                            if a.get("name", "").endswith("Setup.exe"):
-                                download_url = a.get("browser_download_url")
-                                break
-                        if not download_url:
-                            # 降级：如果没有提供 Setup.exe，就在浏览器打开发布页
-                            import webbrowser
-                            webbrowser.open(data.get("html_url", ""))
-                            return
-                        _start_download_and_update(root, download_url)
-                
-                root.after(0, _show_prompt)
-            else:
-                if not silent:
-                    root.after(0, lambda: messagebox.showinfo("检查更新", "当前已经是最新版本！", parent=root))
-        except Exception as e:
+        if not latest_version:
             if not silent:
-                err_msg = f"无法连接到 GitHub 检查更新。\n\n这通常是因为国内网络访问 Github API 受到限制。\n请开启全局代理后再试。\n\n详细报错：{e}"
+                err_msg = "无法获取最新版本信息。\n\n这通常是因为国内网络波动或加速节点失效。\n请稍后再试或开启全局代理。"
                 root.after(0, lambda: messagebox.showerror("网络错误", err_msg, parent=root))
-    
+            return
+            
+        if latest_version != CURRENT_VERSION:
+            msg = f"发现新版本 {latest_version}！\n\n您当前版本为 {CURRENT_VERSION}。\n是否立即下载并覆盖更新？\n(国内网络将自动启用加速节点下载)"
+            def _show_prompt():
+                if messagebox.askyesno("软件更新", msg, parent=root):
+                    # 拼接固定的下载链接，并使用国内 ghproxy 加速下载
+                    raw_dl_url = f"https://github.com/Xynrin/tiktok-douyin-dl/releases/download/{latest_version}/MediaDownloader_Setup.exe"
+                    proxy_dl_url = f"https://ghp.ci/{raw_dl_url}"
+                    _start_download_and_update(root, proxy_dl_url)
+            root.after(0, _show_prompt)
+        else:
+            if not silent:
+                root.after(0, lambda: messagebox.showinfo("检查更新", "当前已经是最新版本！", parent=root))
+
     threading.Thread(target=_run, daemon=True).start()
 
 def _start_download_and_update(root, download_url):
