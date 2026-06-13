@@ -12,20 +12,39 @@ Available as a **Modern Windows GUI app** with one-click installation, and an **
 
 ---
 
-## ✨ New Features in v1.2+ (Windows GUI)
-* 🎨 **Modern Fluent UI**: Brand new Dark Mode interface based on Windows 11 aesthetics.
-* 🔄 **Smart Auto-Update**: Checks GitHub releases on startup and silently updates the app with a single click.
-* 📦 **One-Click Installer**: Standard Windows `Setup.exe` installer with desktop shortcuts and uninstaller.
-* 🛡️ **Built-in Browser Engine**: Automatically downloads its own isolated headless browser sandbox on first run, without interfering with your system Chrome.
+## ✨ v1.4+ New Features
+* 🎨 **Modern UI Design**: Windows 11 Fluent Design (Dark Mode) with a minimalist interface and **seamless language switching (EN/ZH)**.
+* 🌐 **NAS & Docker WebUI**: Deploy a web interface on NAS systems like FeiNiu OS (fnos) via Docker, enabling downloads from any device on the network without a client.
+* 📁 **Smart Archive Management**: Automatically extracts the creator's username and groups downloaded videos and images into dedicated author folders.
+* 🔄 **Silent Auto-Update**: Checks GitHub for updates on startup and performs seamless one-click background updates.
+* 📦 **Standardized Installer**: Provides a standard Windows `Setup.exe` with desktop shortcuts and a robust uninstaller that leaves no trace.
+* 🛡️ **Stealth Mode (Anti-Fingerprint)**: Uses advanced WebDriver evasion techniques to bypass platform bot detection and avoid IP bans.
 
-## 📥 Download & Installation
+## 📥 Download & Install
 
-### 💻 For Windows Users (GUI & CLI)
+### 💻 Windows Users (GUI Recommended)
 1. Go to the [Releases Page](https://github.com/Xynrin/tiktok-douyin-dl/releases/latest).
-2. Download `MediaDownloader_Setup.exe` and double-click to install.
-3. *Optional:* If you prefer the command line, download `douyin-dl.exe` or `tiktok-dl.exe` directly.
+2. Download `MediaDownloader_Setup.exe` and install it.
+3. *Language Switch:* Click the "🌐 Language / 语言" button in the app to switch languages and restart instantly.
+4. *Optional:* Download the standalone `douyin-dl.exe` or `tiktok-dl.exe` if you prefer the CLI.
 
-### 🐧 For Linux Users (CLI)
+### 🐳 NAS Users (FeiNiu OS / Docker WebUI)
+If you have a NAS device, create a Custom App (Docker Compose) and paste the following configuration:
+```yaml
+version: '3.8'
+services:
+  mediadownloader:
+    build: https://github.com/Xynrin/tiktok-douyin-dl.git#main
+    container_name: mediadownloader-webui
+    restart: unless-stopped
+    ports:
+      - "7860:7860"
+    volumes:
+      - /vol1/downloads:/downloads   # Change the left side to your NAS download path
+```
+Deploy it and access `http://<NAS_IP>:7860` in your browser!
+
+### 🐧 Linux Users (CLI)
 Run the following command in your terminal to automatically install the latest Linux binaries to `~/.local/bin`:
 
 ```bash

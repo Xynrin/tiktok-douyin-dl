@@ -830,6 +830,20 @@ class App(tk.Tk):
         
         self._about_btn = ttk.Button(row4, text="关于 / 更新", command=self._show_about)
         self._about_btn.pack(side="right")
+        
+        def _toggle_lang():
+            cfg = load_config()
+            new_lang = "en" if cfg.get("lang", "zh") == "zh" else "zh"
+            cfg["lang"] = new_lang
+            save_config(cfg)
+            if messagebox.askyesno("切换语言 / Language", "语言已更改，需要重启软件才能完全生效。是否立即重启？\nLanguage changed. Restart now?", parent=self):
+                self.destroy()
+                import os
+                import sys
+                os.execl(sys.executable, sys.executable, *sys.argv)
+                
+        self._lang_btn = ttk.Button(row4, text="🌐 Language / 语言", command=_toggle_lang)
+        self._lang_btn.pack(side="right", padx=(0, 8))
 
         # 进度条行
         row5 = ttk.Frame(self)

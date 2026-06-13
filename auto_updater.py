@@ -8,7 +8,7 @@ import tempfile
 import subprocess
 import tkinter.messagebox as messagebox
 
-CURRENT_VERSION = "v1.4.0"
+CURRENT_VERSION = "v1.4.1"
 REPO_API_URL = "https://api.github.com/repos/Xynrin/tiktok-douyin-dl/releases/latest"
 
 def check_for_updates(root, silent=True):

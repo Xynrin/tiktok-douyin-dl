@@ -12,18 +12,37 @@
 
 ---
 
-## ✨ v1.2+ 全新特性 (Windows 客户端)
-* 🎨 **现代化 UI 设计**：全新引入 Windows 11 Fluent 风格的暗黑模式 (Dark Mode) 极简界面。
-* 🔄 **静默智能热更新**：启动时自动比对 GitHub 版本，支持一键无感下载并覆盖更新，永远保持最新反爬规则。
-* 📦 **规范化安装包**：提供标准的 `Setup.exe` 安装向导，自动生成桌面快捷方式及卸载程序。
-* 🛡️ **浏览器沙箱隔离**：首次运行自动下载专用的隔离浏览器内核，绝不污染或调用用户宿主机日常使用的 Chrome 浏览器。
+## ✨ v1.4+ 全新特性
+* 🎨 **现代化 UI 设计**：全新引入 Windows 11 Fluent 风格的暗黑模式极简界面，并**新增了跨语言无缝切换 (中/英)**。
+* 🌐 **NAS 与 Docker 专属 WebUI**：支持在飞牛 OS (fnos) 等各大 NAS 系统一键部署网页端，无需客户端也能在局域网全设备轻松下载。
+* 📁 **自动构建专属档案库**：下载内容不再杂乱无章！智能提取视频作者名，自动为你建立“作者专属文件夹”归档图文和视频。
+* 🔄 **静默智能热更新**：启动时自动比对 GitHub 版本，支持一键无感覆盖更新。
+* 📦 **规范化安装包**：提供标准的 Windows `Setup.exe`，包含自动安装、桌面快捷方式生成以及“不留痕迹”的暴力卸载。
+* 🛡️ **终极风控伪装 (Stealth Mode)**：底层引入了最强防检测注入代码，隐匿 WebDriver 痕迹，最大程度防止下载时被官方风控。
 
 ## 📥 下载与安装
 
 ### 💻 Windows 用户 (图形界面推荐)
 1. 前往 [Releases 页面](https://github.com/Xynrin/tiktok-douyin-dl/releases/latest)。
 2. 下载 `MediaDownloader_Setup.exe`，双击安装即可（内置中文向导与免责声明）。
-3. *可选：* 如果你偏好命令行，也可以在同页面直接下载 `douyin-dl.exe` 或 `tiktok-dl.exe`。
+3. *语言切换：* 安装后在主界面点击“🌐 Language / 语言”即可一键重启切换。
+4. *可选：* 如果你偏好命令行，也可以在同页面直接下载 `douyin-dl.exe` 或 `tiktok-dl.exe`。
+
+### 🐳 NAS 玩家 (飞牛 OS / Docker WebUI)
+如果你拥有 NAS 设备（如 飞牛 OS），直接在设备上新建一个自定义应用（Docker Compose），贴入以下代码一键启动服务：
+```yaml
+version: '3.8'
+services:
+  mediadownloader:
+    build: https://github.com/Xynrin/tiktok-douyin-dl.git#main
+    container_name: mediadownloader-webui
+    restart: unless-stopped
+    ports:
+      - "7860:7860"
+    volumes:
+      - /vol1/downloads:/downloads   # 左侧替换为你NAS的真实下载路径
+```
+部署后在浏览器访问 `http://NAS的IP:7860` 即可使用优雅的网页端！
 
 ### 🐧 Linux 用户 (CLI 命令行)
 在终端运行以下命令，即可自动拉取最新二进制包并软链接至 `~/.local/bin`：
