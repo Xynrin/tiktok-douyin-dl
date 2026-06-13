@@ -8,7 +8,7 @@ import tempfile
 import subprocess
 import tkinter.messagebox as messagebox
 
-CURRENT_VERSION = "v1.4.4"
+CURRENT_VERSION = "v1.4.5"
 
 def check_for_updates(root, silent=True):
     def _run():
@@ -46,7 +46,7 @@ def check_for_updates(root, silent=True):
             def _show_prompt():
                 if messagebox.askyesno("软件更新", msg, parent=root):
                     # 拼接固定的下载链接，并使用国内 ghproxy 加速下载
-                    raw_dl_url = f"https://github.com/Xynrin/tiktok-douyin-dl/releases/download/{latest_version}/MediaDownloader_Setup.exe"
+                    raw_dl_url = f"https://github.com/Xynrin/tiktok-douyin-dl/releases/download/{latest_version}/MediaDownloader_Windows_Setup.zip"
                     proxy_dl_url = f"https://ghp.ci/{raw_dl_url}"
                     _start_download_and_update(root, proxy_dl_url)
             root.after(0, _show_prompt)
@@ -59,13 +59,19 @@ def check_for_updates(root, silent=True):
 def _start_download_and_update(root, download_url):
     def _download():
         try:
+            import zipfile
             temp_dir = tempfile.gettempdir()
-            setup_path = os.path.join(temp_dir, "MediaDownloader_Update_Setup.exe")
+            zip_path = os.path.join(temp_dir, "MediaDownloader_Update.zip")
+            setup_path = os.path.join(temp_dir, "MediaDownloader_Setup.exe")
             
-            # 使用 urllib 下载
+            # 使用 urllib 下载 ZIP
             req = urllib.request.Request(download_url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=15) as resp, open(setup_path, 'wb') as f:
+            with urllib.request.urlopen(req, timeout=15) as resp, open(zip_path, 'wb') as f:
                 f.write(resp.read())
+                
+            # 解压 ZIP 文件
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
             
             # 准备静默安装 bat 脚本
             bat_path = os.path.join(temp_dir, "update_app.bat")

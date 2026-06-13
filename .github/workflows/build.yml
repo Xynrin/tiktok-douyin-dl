@@ -41,23 +41,16 @@ jobs:
       run: |
         python -m PyInstaller --noconfirm --onefile --name "tiktok-dl" --hidden-import tiktok_downloader --collect-all playwright_stealth --clean tiktok_downloader.py
 
-    - name: Build FPK for FeiNiu OS
+    - name: Compress Setup to ZIP
       run: |
-        mkdir fnos_package
-        copy docker-compose.yml fnos_package\docker-compose.yml
-        copy app.ico fnos_package\app.ico
-        echo "name: mediadownloader" > fnos_package\app.yaml
-        echo "version: 1.4.4" >> fnos_package\app.yaml
-        echo "description: TikTok & Douyin Downloader" >> fnos_package\app.yaml
-        tar -czvf MediaDownloader_fnos.fpk -C fnos_package .
+        Compress-Archive -Path dist\MediaDownloader_Setup.exe -DestinationPath MediaDownloader_Windows_Setup.zip
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          dist/MediaDownloader_Setup.exe
+          MediaDownloader_Windows_Setup.zip
           dist/douyin-dl.exe
           dist/tiktok-dl.exe
-          MediaDownloader_fnos.fpk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
