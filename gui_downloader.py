@@ -39,41 +39,25 @@ except AttributeError:
 os.environ['PLAYWRIGHT_BROWSERS_PATH'] = os.path.expanduser('~/.cache/ms-playwright')
 
 # ============================================================================
-# 国内镜像加速：Playwright 浏览器下载（绕过 GFW）
-# 多个镜像源按顺序尝试，第一个可用的会被使用
-#   1. 阿里云 OSS (playwright-zh 官方镜像)
-#   2. npmmirror（淘宝 npm 镜像的二进制文件）
-#   3. GitHub Proxy（ghproxy 等公共代理）
-# 设置 PLAYWRIGHT_DOWNLOAD_HOST 会让 playwright 从镜像源下载浏览器（~100MB）
+# 修复 Windows 环境下子进程（如下载 Playwright 时）弹出 CMD 黑框的问题
+# ============================================================================
+import subprocess
+if os.name == 'nt':
+    _original_popen = subprocess.Popen
+    def _custom_popen(*args, **kwargs):
+        if 'creationflags' not in kwargs:
+            kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+        return _original_popen(*args, **kwargs)
+    subprocess.Popen = _custom_popen
+
+# ============================================================================
+# 国内镜像加速：Playwright 浏览器下载
 # ============================================================================
 if 'PLAYWRIGHT_DOWNLOAD_HOST' not in os.environ:
-    _mirror_candidates = [
-        'https://playwright-zh.oss-cn-hangzhou.aliyuncs.com',
-        'https://cdn.npmmirror.com/binaries/playwright',
-        'https://ghproxy.com/https://playwright.azureedge.net',
-    ]
-    import urllib.request as _ur
-    _selected_mirror = None
-    for _mirror in _mirror_candidates:
-        try:
-            _req = _ur.Request(_mirror, method='HEAD')
-            _resp = _ur.urlopen(_req, timeout=5)
-            if 200 <= _resp.status < 500:
-                _selected_mirror = _mirror
-                break
-        except Exception:
-            continue
-        if _selected_mirror:
-            break
-    if _selected_mirror is None:
-        # 默认选第一个（阿里云）
-        _selected_mirror = _mirror_candidates[0]
-    os.environ['PLAYWRIGHT_DOWNLOAD_HOST'] = _selected_mirror
+    os.environ['PLAYWRIGHT_DOWNLOAD_HOST'] = 'https://npmmirror.com/mirrors/playwright/'
 
-# 同时设置 npm registry 为淘宝镜像（用于 python -m playwright install 内部可能调用的 npm 流程）
 if 'npm_config_registry' not in os.environ:
     os.environ['npm_config_registry'] = 'https://registry.npmmirror.com'
-
 
 # ============================================================================
 # 配置文件读写

@@ -47,9 +47,9 @@ jobs:
         copy docker-compose.yml fnos_package\docker-compose.yml
         copy app.ico fnos_package\app.ico
         echo "name: mediadownloader" > fnos_package\app.yaml
-        echo "version: 1.4.2" >> fnos_package\app.yaml
+        echo "version: 1.4.4" >> fnos_package\app.yaml
         echo "description: TikTok & Douyin Downloader" >> fnos_package\app.yaml
-        Compress-Archive -Path fnos_package\* -DestinationPath MediaDownloader_fnos.fpk
+        tar -czvf MediaDownloader_fnos.fpk -C fnos_package .
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
